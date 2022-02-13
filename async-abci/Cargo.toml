@@ -1,0 +1,21 @@
+[package]
+name = "async-abci"
+version = "0.1.0"
+edition = "2018"
+description = "A async abci server."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bytes = "1.0.1"
+log = "0.4.14"
+prost = "0.8.0"
+tokio = { version = "1", features = ["rt", "net", "io-util", "sync", "rt-multi-thread"] }
+async-trait = "0.1.50"
+tm-abci = { path = "../tm-abci" }
+tm-protos = { path = "../tm-protos" }
+
+[dev-dependencies]
+env_logger = "0.8.4"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"]}
+
