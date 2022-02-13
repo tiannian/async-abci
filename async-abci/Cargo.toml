@@ -3,6 +3,9 @@ name = "async-abci"
 version = "0.1.0"
 edition = "2021"
 description = "A async abci server."
+readme = "../README.md"
+license = "MIT"
+repository = "https://github.com/tiannian/async-abci"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
