@@ -1,8 +1,6 @@
 [workspace]
 members = [
-    "tendermint-sys",
     "tm-abci",
     "tm-protos",
     "async-abci",
-    # "ffi-slim",
 ]

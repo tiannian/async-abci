@@ -24,6 +24,7 @@ fn build_flush_resp() -> Response {
     }
 }
 
+#[allow(unused_assignments)]
 async fn read_to_flush<I: AsyncRead + Unpin, A: Application + 'static>(
     codec: &mut ICodec<I>,
     addr: SocketAddr,
@@ -91,6 +92,7 @@ async fn read_to_flush<I: AsyncRead + Unpin, A: Application + 'static>(
     }
 }
 
+#[allow(unused_assignments)]
 async fn conn_handle<A>(socket: TcpStream, addr: SocketAddr, app: Arc<A>)
 where
     A: Application + 'static,
@@ -101,25 +103,21 @@ where
     let mut ocodec = OCodec::new(writer);
 
     let (resp_tx, mut resp_rx) = unbounded_channel::<(usize, Response)>();
-    // let (resp_event_tx, mut resp_event_rx) = unbounded_channel::<()>();
 
     tokio::spawn(async move {
         let mut resps = BTreeMap::new();
         let mut lastest_packet_number = 0;
         let mut first_packet_number = 0;
-        // let mut window_size = None;
 
         loop {
             if let Some(resp) = resp_rx.recv().await {
-                // log::debug!("Window id: {}, Ready to send packet: {:?}", resp.0, resp.1);
-
                 // insert resps.
                 resps.insert(resp.0, resp.1);
                 first_packet_number = first_index(&resps);
 
                 // process resps.
                 loop {
-                    // log::debug!("Will send packet: {}, expect: {}", first_packet_number, lastest_packet_number + 1);
+                    log::debug!("Will send packet: {}, expect: {}", first_packet_number, lastest_packet_number + 1);
                     if first_packet_number == lastest_packet_number + 1 {
                         if let Some(v) = resps.remove(&first_packet_number) {
                             // Send v.
@@ -127,11 +125,9 @@ where
                                 resps.clear();
                                 lastest_packet_number = 0;
                                 first_packet_number = 0;
-
-                                // resp_event_tx.send(()).expect("Send error");
                             }
 
-                            // log::debug!("Window id: {}, packet sent: {:?}", first_packet_number, v);
+                            log::debug!("Window id: {}, packet sent: {:?}", first_packet_number, v);
                             ocodec.send(v).await.unwrap();
                             lastest_packet_number = first_packet_number;
                             first_packet_number = first_index(&resps);
@@ -152,20 +148,6 @@ where
             read_to_flush(&mut icodec, addr, app, resp_tx.clone()).await
         {
             log::debug!("Recv {} packet before flush.", expect_packet_num);
-
-        //             // Wait n packet.
-        // let mut packet_num = 0;
-        //
-        // while expect_packet_num != packet_num {
-        //     if let Some(_) = resp_event_rx.recv().await {
-        //         packet_num += 1;
-        //         log::debug!(
-        //             "Packet {} already sent, expect {}",
-        //             packet_num,
-        //             expect_packet_num
-        //         );
-        //     }
-        //             }
         } else {
             return;
         }
