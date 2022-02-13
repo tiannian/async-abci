@@ -14,15 +14,92 @@ pub use tm_protos::abci::{
     ResponseQuery,
 };
 
+/// Consensus trait, include `init_chain`, `begin_block`, `deliver_tx`, `end_block` and `commit`.
+#[async_trait::async_trait]
+pub trait Consensus {
+    async fn init_chain(&self, _request: RequestInitChain) -> ResponseInitChain {
+        Default::default()
+    }
+
+    async fn begin_block(&self, _request: RequestBeginBlock) -> ResponseBeginBlock {
+        Default::default()
+    }
+
+    async fn deliver_tx(&self, _request: RequestDeliverTx) -> ResponseDeliverTx {
+        Default::default()
+    }
+
+    async fn end_block(&self, _request: RequestEndBlock) -> ResponseEndBlock {
+        Default::default()
+    }
+
+    async fn commit(&self) -> ResponseCommit {
+        Default::default()
+    }
+}
+
+/// Mempool, include `check_tx`.
+#[async_trait::async_trait]
+pub trait Mempool {
+    async fn check_tx(&self, _request: RequestCheckTx) -> ResponseCheckTx {
+        Default::default()
+    }
+}
+
+/// Snapshot, include `list_snapshots`, `offer_snapshot`, `load_snapshot_chunk` and
+/// `apply_snapshot_chunk`.
+#[async_trait::async_trait]
+pub trait Snapshot {
+    async fn list_snapshots(&self) -> ResponseListSnapshots {
+        Default::default()
+    }
+
+    async fn offer_snapshot(&self, _request: RequestOfferSnapshot) -> ResponseOfferSnapshot {
+        Default::default()
+    }
+
+    async fn load_snapshot_chunk(
+        &self,
+        _request: RequestLoadSnapshotChunk,
+    ) -> ResponseLoadSnapshotChunk {
+        Default::default()
+    }
+
+    async fn apply_snapshot_chunk(
+        &self,
+        _request: RequestApplySnapshotChunk,
+    ) -> ResponseApplySnapshotChunk {
+        Default::default()
+    }
+}
+
+/// Query, include `echo`, `info` and `query`.
+#[async_trait::async_trait]
+pub trait Query {
+    async fn echo(&self, request: RequestEcho) -> ResponseEcho {
+        ResponseEcho {
+            message: request.message,
+        }
+    }
+
+    async fn info(&self, _request: RequestInfo) -> ResponseInfo {
+        Default::default()
+    }
+
+    async fn query(&self, _request: RequestQuery) -> ResponseQuery {
+        Default::default()
+    }
+}
+
 /// Async version application for ABCI.
 #[async_trait::async_trait]
-pub trait Application: Send + Sync {
+pub trait Application: Send + Sync + Consensus + Mempool + Snapshot + Query {
     async fn dispatch(&self, request: Request) -> Response {
         use request::Value;
         Response {
             value: Some(match request.value.unwrap() {
                 Value::Echo(req) => response::Value::Echo(self.echo(req).await),
-                Value::Flush(_) => response::Value::Flush(self.flush().await),
+                Value::Flush(_) => response::Value::Flush(ResponseFlush {}),
                 Value::Info(req) => response::Value::Info(self.info(req).await),
                 Value::InitChain(req) => response::Value::InitChain(self.init_chain(req).await),
                 Value::Query(req) => response::Value::Query(self.query(req).await),
@@ -47,69 +124,15 @@ pub trait Application: Send + Sync {
         }
     }
 
-    async fn echo(&self, request: RequestEcho) -> ResponseEcho {
-        ResponseEcho {
-            message: request.message,
-        }
-    }
 
-    async fn info(&self, _request: RequestInfo) -> ResponseInfo {
-        Default::default()
-    }
-
-    async fn init_chain(&self, _request: RequestInitChain) -> ResponseInitChain {
-        Default::default()
-    }
-
-    async fn query(&self, _request: RequestQuery) -> ResponseQuery {
-        Default::default()
-    }
-
-    async fn check_tx(&self, _request: RequestCheckTx) -> ResponseCheckTx {
-        Default::default()
-    }
-
-    async fn begin_block(&self, _request: RequestBeginBlock) -> ResponseBeginBlock {
-        Default::default()
-    }
-
-    async fn deliver_tx(&self, _request: RequestDeliverTx) -> ResponseDeliverTx {
-        Default::default()
-    }
-
-    async fn end_block(&self, _request: RequestEndBlock) -> ResponseEndBlock {
-        Default::default()
-    }
-
-    async fn flush(&self) -> ResponseFlush {
-        ResponseFlush {}
-    }
-
-    async fn commit(&self) -> ResponseCommit {
-        Default::default()
-    }
-
-    async fn list_snapshots(&self) -> ResponseListSnapshots {
-        Default::default()
-    }
-
-    async fn offer_snapshot(&self, _request: RequestOfferSnapshot) -> ResponseOfferSnapshot {
-        Default::default()
-    }
-
-    async fn load_snapshot_chunk(
-        &self,
-        _request: RequestLoadSnapshotChunk,
-    ) -> ResponseLoadSnapshotChunk {
-        Default::default()
-    }
-
-    async fn apply_snapshot_chunk(
-        &self,
-        _request: RequestApplySnapshotChunk,
-    ) -> ResponseApplySnapshotChunk {
-        Default::default()
-    }
 }
 
-impl Application for () {}
+impl<T: Consensus + Mempool + Snapshot + Query + Send + Sync> Application for T {}
+
+impl Consensus for () {}
+
+impl Mempool for () {}
+
+impl Snapshot for () {}
+
+impl Query for () {}

@@ -1,39 +1,25 @@
 use async_abci::Server;
 use std::{io, time::Duration};
-use tm_abci::Application;
+use tm_abci::{Consensus, Mempool, Snapshot, Query};
 use tm_protos::abci::{
-    RequestBeginBlock, RequestDeliverTx, RequestInfo, ResponseBeginBlock, ResponseDeliverTx,
-    ResponseInfo, CheckTxType,
+    CheckTxType, RequestDeliverTx,
+    ResponseDeliverTx,
 };
 use tokio::time::sleep;
 
 struct App {}
 
 #[async_trait::async_trait]
-impl Application for App {
-    async fn info(&self, _request: RequestInfo) -> ResponseInfo {
-        // println!("--------------------------------------------------------info");
-        Default::default()
-    }
-
-    async fn begin_block(&self, _request: RequestBeginBlock) -> ResponseBeginBlock {
-        // println!("--------------------------------------------------------begin_block");
-        Default::default()
-    }
-
+impl Consensus for App {
     async fn deliver_tx(&self, _request: RequestDeliverTx) -> ResponseDeliverTx {
-        // println!(
-            // "--------------------------------------------------------recv tx: {:?}",
-            // _request
-        // );
         sleep(Duration::from_secs(10)).await;
 
-        // sleep(Duration::from_secs(4)).await;
-        //
-
         Default::default()
     }
+}
 
+#[async_trait::async_trait]
+impl Mempool for App {
     async fn check_tx(
         &self,
         _request: tm_protos::abci::RequestCheckTx,
@@ -45,6 +31,10 @@ impl Application for App {
         Default::default()
     }
 }
+
+impl Snapshot for App {}
+
+impl Query for App {}
 
 #[tokio::main]
 async fn main() -> io::Result<()> {

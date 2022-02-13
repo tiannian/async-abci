@@ -1,4 +1,5 @@
-use crate::{codec::ICodec, Error, OCodec, Result};
+use crate::codec::OCodec;
+use crate::{codec::ICodec, Error, Result};
 use std::sync::Arc;
 use std::{collections::BTreeMap, net::SocketAddr};
 use tm_abci::Application;
@@ -117,7 +118,11 @@ where
 
                 // process resps.
                 loop {
-                    log::debug!("Will send packet: {}, expect: {}", first_packet_number, lastest_packet_number + 1);
+                    log::debug!(
+                        "Will send packet: {}, expect: {}",
+                        first_packet_number,
+                        lastest_packet_number + 1
+                    );
                     if first_packet_number == lastest_packet_number + 1 {
                         if let Some(v) = resps.remove(&first_packet_number) {
                             // Send v.
@@ -162,6 +167,7 @@ fn first_index(resps: &BTreeMap<usize, Response>) -> usize {
     }
 }
 
+/// ACBI Server.
 pub struct Server<A: Application> {
     listener: Option<TcpListener>,
     app: Arc<A>,
