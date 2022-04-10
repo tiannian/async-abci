@@ -123,8 +123,6 @@ pub trait Application: Send + Sync + Consensus + Mempool + Snapshot + Query {
             }),
         }
     }
-
-
 }
 
 impl<T: Consensus + Mempool + Snapshot + Query + Send + Sync> Application for T {}

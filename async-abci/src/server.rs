@@ -1,12 +1,11 @@
 use crate::codec::OCodec;
 use crate::{codec::ICodec, Error, Result};
-use std::sync::Arc;
-use std::{collections::BTreeMap, net::SocketAddr};
+use std::collections::BTreeMap;
 use tm_abci::Application;
 use tm_protos::abci::{request, response, Response, ResponseFlush};
+use tokio::io::AsyncWrite;
 use tokio::{
     io::AsyncRead,
-    net::{TcpListener, TcpStream, ToSocketAddrs},
     sync::mpsc::{unbounded_channel, UnboundedSender},
 };
 
@@ -26,10 +25,9 @@ fn build_flush_resp() -> Response {
 }
 
 #[allow(unused_assignments)]
-async fn read_to_flush<I: AsyncRead + Unpin, A: Application + 'static>(
+async fn read_to_flush<I: AsyncRead + Unpin, A: Application + Clone + 'static>(
     codec: &mut ICodec<I>,
-    addr: SocketAddr,
-    app: Arc<A>,
+    app: A,
     resp_tx: UnboundedSender<(usize, Response)>,
 ) -> Option<usize> {
     // Read packet to flush, return count of non-empty packet.
@@ -81,11 +79,7 @@ async fn read_to_flush<I: AsyncRead + Unpin, A: Application + 'static>(
                 }
             }
             Some(Err(e)) => {
-                log::info!(
-                    "Failed to read incoming request from client {}: {:?}",
-                    addr,
-                    e
-                );
+                log::info!("Failed to read incoming request: {:?}", e);
                 return None;
             }
             None => return None,
@@ -94,12 +88,12 @@ async fn read_to_flush<I: AsyncRead + Unpin, A: Application + 'static>(
 }
 
 #[allow(unused_assignments)]
-async fn conn_handle<A>(socket: TcpStream, addr: SocketAddr, app: Arc<A>)
+async fn conn_handle<A, R, W>(reader: R, writer: W, app: A)
 where
-    A: Application + 'static,
+    R: AsyncRead + Unpin + Sync + Send + 'static,
+    W: AsyncWrite + Unpin + Sync + Send + 'static,
+    A: Application + Clone + 'static,
 {
-    let (reader, writer) = socket.into_split();
-
     let mut icodec = ICodec::new(reader, DEFAULT_SERVER_READ_BUF_SIZE);
     let mut ocodec = OCodec::new(writer);
 
@@ -149,9 +143,7 @@ where
         let app = app.clone();
         let resp_tx = resp_tx.clone();
 
-        if let Some(expect_packet_num) =
-            read_to_flush(&mut icodec, addr, app, resp_tx.clone()).await
-        {
+        if let Some(expect_packet_num) = read_to_flush(&mut icodec, app, resp_tx.clone()).await {
             log::debug!("Recv {} packet before flush.", expect_packet_num);
         } else {
             return;
@@ -168,22 +160,34 @@ fn first_index(resps: &BTreeMap<usize, Response>) -> usize {
 }
 
 /// ACBI Server.
-pub struct Server<A: Application> {
-    listener: Option<TcpListener>,
-    app: Arc<A>,
+pub struct Server<A> {
+    #[cfg(feature = "tcp")]
+    listener: Option<tokio::net::TcpListener>,
+    #[cfg(feature = "unix")]
+    listener: Option<tokio::net::UnixListener>,
+    app: A,
 }
 
-impl<A: Application + 'static> Server<A> {
+impl<A: Application + Clone + 'static> Server<A> {
     pub fn new(app: A) -> Self {
         Server {
             listener: None,
-            app: Arc::new(app),
+            app,
         }
     }
 
-    pub async fn bind<Addr: ToSocketAddrs>(mut self, addr: Addr) -> Result<Self> {
-        let listener = TcpListener::bind(addr).await?;
+    #[cfg(feature = "tcp")]
+    pub async fn bind<Addr: tokio::net::ToSocketAddrs>(mut self, addr: Addr) -> Result<Self> {
+        let listener = tokio::net::TcpListener::bind(addr).await?;
         self.listener = Some(listener);
+        Ok(self)
+    }
+
+    #[cfg(feature = "unix")]
+    pub async fn bind_unix<P: AsRef<std::path::Path>>(mut self, path: P) -> Result<Self> {
+        let listener = tokio::net::UnixListener::bind(path)?;
+        self.listener = Some(listener);
+
         Ok(self)
     }
 
@@ -194,8 +198,10 @@ impl<A: Application + 'static> Server<A> {
         let listener = self.listener.unwrap();
         loop {
             let (socket, addr) = listener.accept().await?;
-            log::info!("new connect from {}", addr);
-            tokio::spawn(conn_handle(socket, addr, self.app.clone()));
+            log::info!("new connect from {:?}", addr);
+
+            let (reader, writer) = socket.into_split();
+            tokio::spawn(conn_handle(reader, writer, self.app.clone()));
         }
     }
 }

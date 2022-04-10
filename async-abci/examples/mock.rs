@@ -1,12 +1,10 @@
 use async_abci::Server;
 use std::{io, time::Duration};
-use tm_abci::{Consensus, Mempool, Snapshot, Query};
-use tm_protos::abci::{
-    CheckTxType, RequestDeliverTx,
-    ResponseDeliverTx,
-};
+use tm_abci::{Consensus, Mempool, Query, Snapshot};
+use tm_protos::abci::{CheckTxType, RequestDeliverTx, ResponseDeliverTx};
 use tokio::time::sleep;
 
+#[derive(Debug, Clone)]
 struct App {}
 
 #[async_trait::async_trait]
