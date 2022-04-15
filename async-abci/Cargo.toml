@@ -13,18 +13,23 @@ repository = "https://github.com/tiannian/async-abci"
 bytes = "1.0.1"
 log = "0.4.14"
 prost = "0.8.0"
-tokio = { version = "1", features = ["rt", "net", "io-util", "sync", "rt-multi-thread"] }
 async-trait = "0.1.50"
 tm-abci = { path = "../tm-abci", version = "0.1" }
 tm-protos = { path = "../tm-protos", version = "0.1" }
+
+tokio = { version = "1", features = ["rt", "net", "io-util", "sync", "rt-multi-thread"], optional = true }
+smol = { version = "1.2.5", optional = true }
 
 [dev-dependencies]
 env_logger = "0.8.4"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"]}
 
 [features]
-default = ["tcp"]
+default = ["tcp", "smol-backend", "unix"]
 
 tcp = []
 unix = []
+
+tokio-backend = ["tokio"]
+smol-backend = ["smol"]
 

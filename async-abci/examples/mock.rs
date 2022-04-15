@@ -1,6 +1,6 @@
 use async_abci::Server;
 use std::{io, time::Duration};
-use tm_abci::{Consensus, Mempool, Query, Snapshot};
+use tm_abci::{Consensus, Mempool, Query, RequestBeginBlock, ResponseBeginBlock, Snapshot};
 use tm_protos::abci::{CheckTxType, RequestDeliverTx, ResponseDeliverTx};
 use tokio::time::sleep;
 
@@ -9,8 +9,13 @@ struct App {}
 
 #[async_trait::async_trait]
 impl Consensus for App {
+    async fn begin_block(&self, _request: RequestBeginBlock) -> ResponseBeginBlock {
+        println!("{:#?}", _request);
+        Default::default()
+    }
+
     async fn deliver_tx(&self, _request: RequestDeliverTx) -> ResponseDeliverTx {
-        sleep(Duration::from_secs(10)).await;
+        // sleep(Duration::from_secs(10)).await;
 
         Default::default()
     }
@@ -23,7 +28,7 @@ impl Mempool for App {
         _request: tm_protos::abci::RequestCheckTx,
     ) -> tm_protos::abci::ResponseCheckTx {
         if CheckTxType::from_i32(_request.r#type).unwrap() == CheckTxType::New {
-            sleep(Duration::from_secs(2)).await;
+            // sleep(Duration::from_secs(2)).await;
         }
 
         Default::default()

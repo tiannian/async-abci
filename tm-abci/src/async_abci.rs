@@ -14,6 +14,8 @@ pub use tm_protos::abci::{
     ResponseQuery,
 };
 
+use crate::{RequestFinalizedBlock, ResponseFinalizedBlock};
+
 /// Consensus trait, include `init_chain`, `begin_block`, `deliver_tx`, `end_block` and `commit`.
 #[async_trait::async_trait]
 pub trait Consensus {
@@ -30,6 +32,21 @@ pub trait Consensus {
     }
 
     async fn end_block(&self, _request: RequestEndBlock) -> ResponseEndBlock {
+        Default::default()
+    }
+
+    async fn commit(&self) -> ResponseCommit {
+        Default::default()
+    }
+}
+
+#[async_trait::async_trait]
+pub trait ConsensusXX {
+    async fn init_chain(&self, _request: RequestInitChain) -> ResponseInitChain {
+        Default::default()
+    }
+
+    async fn finalized_block(&self, _request: RequestFinalizedBlock) -> ResponseFinalizedBlock {
         Default::default()
     }
 
@@ -124,6 +141,8 @@ pub trait Application: Send + Sync + Consensus + Mempool + Snapshot + Query {
         }
     }
 }
+
+pub trait ApplicationXX: Send + Sync + ConsensusXX + Mempool + Snapshot + Query {}
 
 impl<T: Consensus + Mempool + Snapshot + Query + Send + Sync> Application for T {}
 

@@ -1,6 +1,10 @@
 use bytes::{Buf, BufMut, BytesMut};
 use prost::Message;
+use smol::io::{AsyncReadExt, AsyncWriteExt};
+#[cfg(feature = "smol-backend")]
+use smol::prelude::{AsyncRead, AsyncWrite};
 use tm_protos::abci::{Request, Response};
+#[cfg(feature = "tokio-backend")]
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::error::Error;
