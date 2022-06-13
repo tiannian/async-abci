@@ -1,3 +1,5 @@
+// #![feature(tokio-backend)]
+
 use async_abci::Server;
 use std::{io, time::Duration};
 use tm_abci::{Consensus, Mempool, Query, RequestBeginBlock, ResponseBeginBlock, Snapshot};
@@ -15,7 +17,7 @@ impl Consensus for App {
     }
 
     async fn deliver_tx(&self, _request: RequestDeliverTx) -> ResponseDeliverTx {
-        // sleep(Duration::from_secs(10)).await;
+        sleep(Duration::from_secs(10)).await;
 
         Default::default()
     }

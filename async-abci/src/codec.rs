@@ -1,5 +1,6 @@
 use bytes::{Buf, BufMut, BytesMut};
 use prost::Message;
+#[cfg(feature = "smol-backend")]
 use smol::io::{AsyncReadExt, AsyncWriteExt};
 #[cfg(feature = "smol-backend")]
 use smol::prelude::{AsyncRead, AsyncWrite};

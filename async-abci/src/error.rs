@@ -7,6 +7,9 @@ pub enum Error {
     ProstEncodeError(prost::EncodeError),
     ProstDecodeError(prost::DecodeError),
     ServerNotBinding,
+    ABCIFormatError,
+    ABCIPacketError,
+    StateError,
 }
 
 impl From<io::Error> for Error {

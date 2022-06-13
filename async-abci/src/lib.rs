@@ -8,7 +8,9 @@ mod serverxx;
 #[cfg(feature = "smol-backend")]
 pub use serverxx::*;
 
-mod codec;
+pub mod state;
+
+pub mod codec;
 
 mod error;
 pub use error::{Error, Result};

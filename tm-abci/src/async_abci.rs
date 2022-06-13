@@ -142,7 +142,45 @@ pub trait Application: Send + Sync + Consensus + Mempool + Snapshot + Query {
     }
 }
 
-pub trait ApplicationXX: Send + Sync + ConsensusXX + Mempool + Snapshot + Query {}
+#[async_trait::async_trait]
+pub trait ApplicationXX: Send + Sync + ConsensusXX + Mempool + Snapshot + Query {
+    async fn dispatch(&self, request: Request) -> Response {
+        use request::Value;
+        Response {
+            value: Some(match request.value.unwrap() {
+                Value::Echo(req) => response::Value::Echo(self.echo(req).await),
+                Value::Flush(_) => response::Value::Flush(ResponseFlush {}),
+                Value::Info(req) => response::Value::Info(self.info(req).await),
+                Value::InitChain(req) => response::Value::InitChain(self.init_chain(req).await),
+                Value::Query(req) => response::Value::Query(self.query(req).await),
+                // Note: This method will not call.
+                Value::BeginBlock(_req) => response::Value::BeginBlock(Default::default()),
+                Value::CheckTx(req) => response::Value::CheckTx(self.check_tx(req).await),
+                // Note: This method will not call.
+                Value::DeliverTx(_req) => response::Value::DeliverTx(Default::default()),
+                // Note: This method will not call.
+                Value::EndBlock(_req) => response::Value::EndBlock(Default::default()),
+                Value::Commit(_) => response::Value::Commit(self.commit().await),
+                Value::ListSnapshots(_) => {
+                    response::Value::ListSnapshots(self.list_snapshots().await)
+                }
+                Value::OfferSnapshot(req) => {
+                    response::Value::OfferSnapshot(self.offer_snapshot(req).await)
+                }
+                Value::LoadSnapshotChunk(req) => {
+                    response::Value::LoadSnapshotChunk(self.load_snapshot_chunk(req).await)
+                }
+                Value::ApplySnapshotChunk(req) => {
+                    response::Value::ApplySnapshotChunk(self.apply_snapshot_chunk(req).await)
+                }
+            }),
+        }
+    }
+}
+
+impl ConsensusXX for () {}
+
+impl<T: ConsensusXX + Mempool + Snapshot + Query + Send + Sync> ApplicationXX for T {}
 
 impl<T: Consensus + Mempool + Snapshot + Query + Send + Sync> Application for T {}
 
