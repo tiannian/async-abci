@@ -1,6 +1,6 @@
 use smol::{
     io::{AsyncRead, AsyncWrite},
-    net::{unix::UnixListener, AsyncToSocketAddrs, TcpListener},
+    net::{AsyncToSocketAddrs, TcpListener},
 };
 use tm_abci::ApplicationXX;
 

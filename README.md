@@ -20,3 +20,9 @@ An ABCI like [tendermint-abci](https://crates.io/crates/tendermint-abci), but as
 - async-abci: async version of ABCI, fully cooperate with `Flush` in ABCI message.
 - Async runtime support: tokio.
 
+## Design
+
+### Consensus
+
+![](assets/consensus.png)
+
