@@ -2,7 +2,7 @@ use smol::{
     io::{AsyncRead, AsyncWrite},
     net::{AsyncToSocketAddrs, TcpListener},
 };
-use tm_abci::{response, ApplicationXX, Response, Request, request};
+use tm_abci::{request, response, ApplicationXX, Request, Response};
 
 use crate::{
     codec::{ICodec, OCodec},
@@ -64,7 +64,24 @@ where
     }
 }
 
-// async fn
+async fn send_flush<W>(ocodec: &mut OCodec<W>)
+where
+    W: AsyncWrite + Unpin + Sync + Send + 'static,
+{
+    let flush = Response {
+        value: Some(response::Value::Flush(Default::default())),
+    };
+    log::info!("Send: {:?}", flush);
+    ocodec.send(flush).await.expect("Failed to send data");
+}
+
+async fn send_response<W>(ocodec: &mut OCodec<W>, resp: Response)
+where
+    W: AsyncWrite + Unpin + Sync + Send + 'static,
+{
+    log::info!("Send: {:?}", resp);
+    ocodec.send(resp).await.expect("Failed to send data");
+}
 
 async fn conn_handle<A, R, W>(reader: R, writer: W, app: A)
 where
@@ -99,68 +116,64 @@ where
                         if st.is_deliver_block() {
                             // do appxx
                             let fbp = st.to_block().expect("Failed to build block");
+
+                            let tx_len = fbp.transactions.len();
+
                             let res = app.finalized_block(fbp).await;
+
+                            let filled_tx = tx_len - res.tx_receipt.len();
+
                             for tx in res.tx_receipt {
                                 let value = Some(response::Value::DeliverTx(tx));
                                 let resp = Response { value };
-                                log::info!("Send: {:?}", resp);
-                                ocodec.send(resp).await.expect("Failed to send data");
+
+                                send_response(&mut ocodec, resp).await;
                             }
+
+                            for _ in 0 .. filled_tx {
+                                let value = Some(response::Value::DeliverTx(Default::default()));
+                                let resp = Response { value };
+
+                                send_response(&mut ocodec, resp).await;
+                            }
+
                             let value = Some(response::Value::EndBlock(res.end_recepit));
                             let resp = Response { value };
-                            log::info!("Send: {:?}", resp);
-                            ocodec.send(resp).await.expect("Failed to send data");
-                            let flush = Response {
-                                value: Some(response::Value::Flush(Default::default())),
-                            };
-                            log::info!("Send: {:?}", flush);
-                            ocodec.send(flush).await.expect("Failed to send data");
+
+                            send_response(&mut ocodec, resp).await;
+
+                            send_flush(&mut ocodec).await;
                         }
 
                         if st.is_sendable() {
                             let request = st.to_packet().expect("Wrong state");
-                            let res = app.dispatch(request).await;
-                            log::info!("Send: {:?}", res);
-                            ocodec.send(res).await.expect("Failed to send data");
-                            let flush = Response {
-                                value: Some(response::Value::Flush(Default::default())),
-                            };
-                            log::info!("Send: {:?}", flush);
-                            ocodec.send(flush).await.expect("Failed to send data");
+                            let resp = app.dispatch(request).await;
+
+                            send_response(&mut ocodec, resp).await;
+
+                            send_flush(&mut ocodec).await;
                         }
 
                         if st.is_begin_block_flush() {
                             let resp = Response {
                                 value: Some(response::Value::BeginBlock(Default::default())),
                             };
-                            log::info!("Send: {:?}", resp);
-                            ocodec.send(resp).await.expect("Failed to send data");
-                            let flush = Response {
-                                value: Some(response::Value::Flush(Default::default())),
-                            };
-                            log::info!("Send: {:?}", flush);
-                            ocodec.send(flush).await.expect("Failed to send data");
+
+                            send_response(&mut ocodec, resp).await;
+
+                            send_flush(&mut ocodec).await;
                         }
 
                         if st.is_commit_flush() {
-                            let req = Request { value: Some(request::Value::Commit(Default::default())) };
-                            let resp = app.dispatch(req).await;
-                            log::info!("Send: {:?}", resp);
-                            ocodec.send(resp).await.expect("Failed to send data");
-                            let flush = Response {
-                                value: Some(response::Value::Flush(Default::default())),
+                            let req = Request {
+                                value: Some(request::Value::Commit(Default::default())),
                             };
-                            log::info!("Send: {:?}", flush);
-                            ocodec.send(flush).await.expect("Failed to send data");
-                        }
+                            let resp = app.dispatch(req).await;
 
-//                         if st.is_commit_flush() {
-                            // let flush = Response {
-                            //     value: Some(response::Value::Flush(Default::default())),
-                            // };
-                            // log::info!("Send: {:?}", flush);
-                            // ocodec.send(flush).await.expect("Failed to send data");
-//                         }
+                            send_response(&mut ocodec, resp).await;
+
+                            send_flush(&mut ocodec).await;
+                        }
                     } else {
                         // do appxx
                         let res = app.dispatch(p).await;

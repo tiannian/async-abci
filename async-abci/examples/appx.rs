@@ -1,6 +1,6 @@
 use async_abci::ServerXX;
 use tm_abci::{
-    ConsensusXX, Mempool, Query, RequestFinalizedBlock, ResponseFinalizedBlock, Snapshot,
+    ConsensusXX, Mempool, Query, RequestFinalizedBlock, ResponseFinalizedBlock, Snapshot, ResponseDeliverTx
 };
 
 #[derive(Debug, Clone)]
@@ -8,8 +8,20 @@ struct App {}
 
 #[async_trait::async_trait]
 impl ConsensusXX for App {
-    async fn finalized_block(&self, _request: RequestFinalizedBlock) -> ResponseFinalizedBlock {
-        Default::default()
+    async fn finalized_block(&self, req: RequestFinalizedBlock) -> ResponseFinalizedBlock {
+        let mut fb = ResponseFinalizedBlock::default();
+
+        for tx in req.transactions {
+            let code = tx[0];
+
+            let mut resp = ResponseDeliverTx::default();
+
+            resp.code = code as u32;
+
+            fb.tx_receipt.push(resp);
+        }
+
+        fb
     }
 }
 
