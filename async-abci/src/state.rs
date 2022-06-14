@@ -8,10 +8,14 @@ use std::mem;
 pub enum ConsensusState {
     Begin,
     ConsensusBegin,
+    ConsensusBeginFlush,
     BlockBegin,
+    BlockBeginFlush,
     TxReceived,
     BlockEnd,
     DeliverBlock,
+    BlockCommit,
+    BlockCommitFlush,
 }
 
 impl Default for ConsensusState {
@@ -30,6 +34,7 @@ pub struct ConsensusQueue {
     pub block: RequestBeginBlock,
     pub txs: Vec<RequestDeliverTx>,
     pub state: ConsensusState,
+    pub packet: Option<Request>,
 }
 
 impl ConsensusQueue {
@@ -41,6 +46,7 @@ impl ConsensusQueue {
                     block,
                     txs: Vec::new(),
                     state: ConsensusState::Begin,
+                    packet: None,
                 };
                 Ok(cq)
             }
@@ -49,31 +55,58 @@ impl ConsensusQueue {
     }
 
     pub fn is_consensus(pkt: &Request) -> bool {
-        matches!(pkt.value, Some(request::Value::BeginBlock(_)))
+        matches!(pkt.value, Some(request::Value::InitChain(_)))
     }
 
     pub fn is_deliver_block(&self) -> bool {
         matches!(self.state, ConsensusState::DeliverBlock)
     }
 
+    pub fn is_sendable(&self) -> bool {
+        matches!(self.state, ConsensusState::ConsensusBeginFlush)
+    }
+
+    pub fn is_begin_block_flush(&self) -> bool {
+        matches!(self.state, ConsensusState::BlockBeginFlush)
+    }
+
+    pub fn is_commit(&self) -> bool {
+        matches!(self.state, ConsensusState::BlockCommit)
+    }
+
+    pub fn is_commit_flush(&self) -> bool {
+        matches!(self.state, ConsensusState::BlockCommitFlush)
+    }
+
     pub fn add_pkt(&mut self, pkt: Request) -> Result<()> {
         match (&self.state, pkt.value.ok_or(Error::ABCIFormatError)?) {
             // Begin -> ConsensusBegin
-            (ConsensusState::Begin, request::Value::InitChain(_)) => {
+            (ConsensusState::Begin, request::Value::InitChain(p)) => {
+                self.packet = Some(Request {
+                    value: Some(request::Value::InitChain(p)),
+                });
                 self.state = ConsensusState::ConsensusBegin;
             }
-            // ConsensusBegin -> BlockBegin
-            (ConsensusState::ConsensusBegin, request::Value::BeginBlock(p)) => {
+            // ConsensusBegin -> ConsensusBeginFlush
+            (ConsensusState::ConsensusBegin, request::Value::Flush(_)) => {
+                self.state = ConsensusState::ConsensusBeginFlush;
+            }
+            // ConsensusBeginFlush -> BlockBegin
+            (ConsensusState::ConsensusBeginFlush, request::Value::BeginBlock(p)) => {
                 self.block = p;
                 self.state = ConsensusState::BlockBegin;
             }
             // Begin -> BlockBegin
             (ConsensusState::Begin, request::Value::BeginBlock(p)) => {
-                self.block = p;
+                self.block = p.clone();
                 self.state = ConsensusState::BlockBegin;
             }
+            // BlockBegin -> BlockBeginFlush
+            (ConsensusState::BlockBegin, request::Value::Flush(_)) => {
+                self.state = ConsensusState::BlockBeginFlush;
+            }
             // BlockBegin -> TxReceived
-            (ConsensusState::BlockBegin, request::Value::DeliverTx(p)) => {
+            (ConsensusState::BlockBeginFlush, request::Value::DeliverTx(p)) => {
                 self.txs.push(p);
                 self.state = ConsensusState::TxReceived;
             }
@@ -85,12 +118,27 @@ impl ConsensusQueue {
             (ConsensusState::TxReceived, request::Value::EndBlock(_)) => {
                 self.state = ConsensusState::BlockEnd;
             }
+            // BlockBeginFlush -> BlockEnd
+            (ConsensusState::BlockBeginFlush, request::Value::EndBlock(_)) => {
+                self.state = ConsensusState::BlockEnd;
+            }
             // BlockEnd -> DeliverBlock
             (ConsensusState::BlockEnd, request::Value::Flush(_)) => {
                 self.state = ConsensusState::DeliverBlock;
             }
-            // DeliverBlock -> BlockBegin
-            (ConsensusState::DeliverBlock, request::Value::BeginBlock(p)) => {
+            // DeliverBlock -> BlockCommit
+            (ConsensusState::DeliverBlock, request::Value::Commit(_)) => {
+                self.state = ConsensusState::BlockCommit;
+            }
+            // BlockCommit -> BlockCommitFlush
+            (ConsensusState::BlockCommit, request::Value::Flush(_)) => {
+                self.state = ConsensusState::BlockCommitFlush;
+            }
+//             (ConsensusState::BlockCommitFlush, request::Value::Flush(_)) => {
+                // self.state = ConsensusState::BlockCommitFlush;
+//             }
+            // BlockCommitFlush -> BlockBegin
+            (ConsensusState::BlockCommitFlush, request::Value::BeginBlock(p)) => {
                 self.block = p;
                 self.state = ConsensusState::BlockBegin;
             }
@@ -109,5 +157,10 @@ impl ConsensusQueue {
         } else {
             Err(Error::StateError)
         }
+    }
+
+    pub fn to_packet(&mut self) -> Result<Request> {
+        let request = mem::replace(&mut self.packet, None);
+        request.ok_or(Error::ABCIPacketError)
     }
 }

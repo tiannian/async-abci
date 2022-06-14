@@ -2,7 +2,7 @@ use smol::{
     io::{AsyncRead, AsyncWrite},
     net::{AsyncToSocketAddrs, TcpListener},
 };
-use tm_abci::{response, ApplicationXX, Response};
+use tm_abci::{response, ApplicationXX, Response, Request, request};
 
 use crate::{
     codec::{ICodec, OCodec},
@@ -79,10 +79,22 @@ where
         let pkt = icodec.next().await;
         match pkt {
             Some(Ok(p)) => {
+                log::info!("Recv: {:?}", p);
+
+                if state.is_none() {
+                    if ConsensusQueue::is_consensus(&p) {
+                        state = Some(State::Consensus(
+                            ConsensusQueue::new(p.clone()).expect("Logic error"),
+                        ));
+                    } else {
+                        state = Some(State::Other);
+                    }
+                }
+
                 if let Some(st) = &mut state {
                     // do logic of based on state.
                     if let State::Consensus(st) = st {
-                        log::info!("State is: {:?}, packet is: {:?}", st.state, p);
+                        log::info!("State is: {:?}", st.state);
                         st.add_pkt(p).expect("Error state convert");
                         if st.is_deliver_block() {
                             // do appxx
@@ -91,23 +103,69 @@ where
                             for tx in res.tx_receipt {
                                 let value = Some(response::Value::DeliverTx(tx));
                                 let resp = Response { value };
+                                log::info!("Send: {:?}", resp);
                                 ocodec.send(resp).await.expect("Failed to send data");
                             }
                             let value = Some(response::Value::EndBlock(res.end_recepit));
                             let resp = Response { value };
+                            log::info!("Send: {:?}", resp);
                             ocodec.send(resp).await.expect("Failed to send data");
+                            let flush = Response {
+                                value: Some(response::Value::Flush(Default::default())),
+                            };
+                            log::info!("Send: {:?}", flush);
+                            ocodec.send(flush).await.expect("Failed to send data");
                         }
+
+                        if st.is_sendable() {
+                            let request = st.to_packet().expect("Wrong state");
+                            let res = app.dispatch(request).await;
+                            log::info!("Send: {:?}", res);
+                            ocodec.send(res).await.expect("Failed to send data");
+                            let flush = Response {
+                                value: Some(response::Value::Flush(Default::default())),
+                            };
+                            log::info!("Send: {:?}", flush);
+                            ocodec.send(flush).await.expect("Failed to send data");
+                        }
+
+                        if st.is_begin_block_flush() {
+                            let resp = Response {
+                                value: Some(response::Value::BeginBlock(Default::default())),
+                            };
+                            log::info!("Send: {:?}", resp);
+                            ocodec.send(resp).await.expect("Failed to send data");
+                            let flush = Response {
+                                value: Some(response::Value::Flush(Default::default())),
+                            };
+                            log::info!("Send: {:?}", flush);
+                            ocodec.send(flush).await.expect("Failed to send data");
+                        }
+
+                        if st.is_commit_flush() {
+                            let req = Request { value: Some(request::Value::Commit(Default::default())) };
+                            let resp = app.dispatch(req).await;
+                            log::info!("Send: {:?}", resp);
+                            ocodec.send(resp).await.expect("Failed to send data");
+                            let flush = Response {
+                                value: Some(response::Value::Flush(Default::default())),
+                            };
+                            log::info!("Send: {:?}", flush);
+                            ocodec.send(flush).await.expect("Failed to send data");
+                        }
+
+//                         if st.is_commit_flush() {
+                            // let flush = Response {
+                            //     value: Some(response::Value::Flush(Default::default())),
+                            // };
+                            // log::info!("Send: {:?}", flush);
+                            // ocodec.send(flush).await.expect("Failed to send data");
+//                         }
                     } else {
                         // do appxx
                         let res = app.dispatch(p).await;
+                        log::info!("Send: {:?}", res);
                         ocodec.send(res).await.expect("Failed to send data");
-                    }
-                } else {
-                    // inital state
-                    if ConsensusQueue::is_consensus(&p) {
-                        state = Some(State::Consensus(
-                            ConsensusQueue::new(p).expect("Logic error"),
-                        ));
                     }
                 }
             }
