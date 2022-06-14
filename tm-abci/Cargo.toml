@@ -1,6 +1,6 @@
 [package]
 name = "tm-abci"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "tendermint ABCI trait in no_std"
 license = "MIT"
