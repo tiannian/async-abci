@@ -2,7 +2,7 @@ use smol::{
     io::{AsyncRead, AsyncWrite},
     net::{AsyncToSocketAddrs, TcpListener},
 };
-use tm_abci::ApplicationXX;
+use tm_abci::{response, ApplicationXX, Response};
 
 use crate::{
     codec::{ICodec, OCodec},
@@ -88,7 +88,14 @@ where
                             // do appxx
                             let fbp = st.to_block().expect("Failed to build block");
                             let res = app.finalized_block(fbp).await;
-                            // app.dp).await;
+                            for tx in res.tx_receipt {
+                                let value = Some(response::Value::DeliverTx(tx));
+                                let resp = Response { value };
+                                ocodec.send(resp).await.expect("Failed to send data");
+                            }
+                            let value = Some(response::Value::EndBlock(res.end_recepit));
+                            let resp = Response { value };
+                            ocodec.send(resp).await.expect("Failed to send data");
                         }
                     } else {
                         // do appxx
