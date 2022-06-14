@@ -1,6 +1,7 @@
 use async_abci::ServerXX;
 use tm_abci::{
-    ConsensusXX, Mempool, Query, RequestFinalizedBlock, ResponseFinalizedBlock, Snapshot, ResponseDeliverTx
+    ConsensusXX, Mempool, Query, RequestFinalizedBlock, ResponseDeliverTx, ResponseFinalizedBlock,
+    Snapshot,
 };
 
 #[derive(Debug, Clone)]

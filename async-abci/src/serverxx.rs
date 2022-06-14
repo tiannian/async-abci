@@ -1,7 +1,17 @@
-use smol::{
-    io::{AsyncRead, AsyncWrite},
-    net::{AsyncToSocketAddrs, TcpListener},
-};
+#[cfg(feature = "smol-backend")]
+use smol::io::{AsyncRead, AsyncWrite};
+#[cfg(all(feature = "smol-backend", feature = "unix"))]
+use smol::net::unix::UnixListener;
+#[cfg(all(feature = "smol-backend", feature = "tcp"))]
+use smol::net::{TcpListener, AsyncToSocketAddrs};
+
+#[cfg(feature = "tokio-backend")]
+use tokio::io::{AsyncRead, AsyncWrite};
+#[cfg(all(feature = "tokio-backend", feature = "unix"))]
+use tokio::net::UnixListener;
+#[cfg(all(feature = "tokio-backend", feature = "tcp"))]
+use tokio::net::{TcpListener, ToSocketAddrs as AsyncToSocketAddrs};
+
 use tm_abci::{request, response, ApplicationXX, Request, Response};
 
 use crate::{
@@ -13,9 +23,9 @@ use crate::{
 /// ACBI Server.
 pub struct ServerXX<App> {
     #[cfg(feature = "tcp")]
-    listener: Option<smol::net::TcpListener>,
+    listener: Option<TcpListener>,
     #[cfg(feature = "unix")]
-    listener: Option<smol::net::unix::UnixListener>,
+    listener: Option<UnixListener>,
     app: App,
 }
 
@@ -39,6 +49,7 @@ where
     pub async fn bind<A: AsyncToSocketAddrs>(mut self, addr: A) -> Result<Self> {
         let listener = TcpListener::bind(addr).await?;
         self.listener = Some(listener);
+
         Ok(self)
     }
 
@@ -59,7 +70,14 @@ where
             let (socket, addr) = listener.accept().await?;
             log::info!("new connect from {:?}", addr);
 
+            #[cfg(feature = "smol-backend")]
             smol::spawn(conn_handle(socket.clone(), socket, self.app.clone())).detach();
+
+            #[cfg(feature = "tokio-backend")]
+            {
+                let (reader, writer) = socket.into_split();
+                tokio::spawn(conn_handle(reader, writer, self.app.clone()));
+            }
         }
     }
 }
@@ -130,7 +148,7 @@ where
                                 send_response(&mut ocodec, resp).await;
                             }
 
-                            for _ in 0 .. filled_tx {
+                            for _ in 0..filled_tx {
                                 let value = Some(response::Value::DeliverTx(Default::default()));
                                 let resp = Response { value };
 
