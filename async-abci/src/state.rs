@@ -134,9 +134,6 @@ impl ConsensusQueue {
             (ConsensusState::BlockCommit, request::Value::Flush(_)) => {
                 self.state = ConsensusState::BlockCommitFlush;
             }
-//             (ConsensusState::BlockCommitFlush, request::Value::Flush(_)) => {
-                // self.state = ConsensusState::BlockCommitFlush;
-//             }
             // BlockCommitFlush -> BlockBegin
             (ConsensusState::BlockCommitFlush, request::Value::BeginBlock(p)) => {
                 self.block = p;
