@@ -3,7 +3,7 @@ use smol::io::{AsyncRead, AsyncWrite};
 #[cfg(all(feature = "smol-backend", feature = "unix"))]
 use smol::net::unix::UnixListener;
 #[cfg(all(feature = "smol-backend", feature = "tcp"))]
-use smol::net::{TcpListener, AsyncToSocketAddrs};
+use smol::net::{AsyncToSocketAddrs, TcpListener};
 
 #[cfg(feature = "tokio-backend")]
 use tokio::io::{AsyncRead, AsyncWrite};
