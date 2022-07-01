@@ -11,5 +11,5 @@ readme = "../README.md"
 
 [dependencies]
 async-trait = { version = "0.1.50" }
-tm-protos = { path = "../tm-protos", version = "0.1.0" }
+tm-protos = { path = "../tm-protos", version = "0.1" }
 
