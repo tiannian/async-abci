@@ -5,8 +5,8 @@ option go_package = "github.com/tendermint/tendermint/proto/tendermint/types";
 
 import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
-import "types/types.proto";
-import "types/validator.proto";
+import "tendermint/types/types.proto";
+import "tendermint/types/validator.proto";
 
 message Evidence {
   oneof sum {

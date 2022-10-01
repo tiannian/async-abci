@@ -137,6 +137,7 @@ pub trait Application: Send + Sync + Consensus + Mempool + Snapshot + Query {
                 Value::ApplySnapshotChunk(req) => {
                     response::Value::ApplySnapshotChunk(self.apply_snapshot_chunk(req).await)
                 }
+                Value::SetOption(_req) => response::Value::SetOption(Default::default()),
             }),
         }
     }
@@ -173,6 +174,7 @@ pub trait ApplicationXX: Send + Sync + ConsensusXX + Mempool + Snapshot + Query 
                 Value::ApplySnapshotChunk(req) => {
                     response::Value::ApplySnapshotChunk(self.apply_snapshot_chunk(req).await)
                 }
+                Value::SetOption(_req) => response::Value::SetOption(Default::default()),
             }),
         }
     }

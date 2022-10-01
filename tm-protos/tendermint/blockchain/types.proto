@@ -1,9 +1,9 @@
 syntax = "proto3";
-package tendermint.blocksync;
+package tendermint.blockchain;
 
-option go_package = "github.com/tendermint/tendermint/proto/tendermint/blocksync";
+option go_package = "github.com/tendermint/tendermint/proto/tendermint/blockchain";
 
-import "types/block.proto";
+import "tendermint/types/block.proto";
 
 // BlockRequest requests a block for a specific height
 message BlockRequest {
