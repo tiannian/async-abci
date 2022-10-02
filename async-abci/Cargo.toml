@@ -12,7 +12,7 @@ repository = "https://github.com/tiannian/async-abci"
 [dependencies]
 bytes = "1.0.1"
 log = "0.4.14"
-prost = "0.10"
+prost = "0.11"
 async-trait = "0.1.50"
 tm-abci = { path = "../tm-abci", version = "0.1" }
 tm-protos = { path = "../tm-protos", version = "0.1" }

@@ -4,8 +4,8 @@ package tendermint.consensus;
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/consensus";
 
 import "gogoproto/gogo.proto";
-import "types/types.proto";
-import "libs/bits/types.proto";
+import "tendermint/types/types.proto";
+import "tendermint/libs/bits/types.proto";
 
 // NewRoundStep is sent for every step taken in the ConsensusState.
 // For every height/round/step transition
@@ -18,7 +18,7 @@ message NewRoundStep {
 }
 
 // NewValidBlock is sent when a validator observes a valid block B in some round r,
-//i.e., there is a Proposal for block B and 2/3+ prevotes for the block B in the round r.
+// i.e., there is a Proposal for block B and 2/3+ prevotes for the block B in the round r.
 // In case the block is also committed, then IsCommit flag is set to true.
 message NewValidBlock {
   int64                          height                = 1;

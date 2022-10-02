@@ -117,7 +117,7 @@ where
     message.encode(&mut buf).map_err(Error::ProstEncodeError)?;
 
     let buf = buf.freeze();
-    prost::encoding::encode_varint(buf.len() as u64, &mut dst);
+    encode_varint(buf.len() as u64, &mut dst);
     dst.put(buf);
     Ok(())
 }
@@ -129,11 +129,11 @@ where
 {
     let src_len = src.len();
     let mut tmp = src.clone().freeze();
-    let encoded_len = match prost::encoding::decode_varint(&mut tmp) {
+    let encoded_len = match decode_varint(&mut tmp) {
         Ok(len) => len,
         // We've potentially only received a partial length delimiter
         Err(_) if src_len <= MAX_VARINT_LENGTH => return Ok(None),
-        Err(e) => return Err(Error::ProstDecodeError(e)),
+        Err(e) => return Err(e),
     };
     let remaining = tmp.remaining() as u64;
     if remaining < encoded_len {
@@ -151,3 +151,13 @@ where
         Ok(Some(res))
     }
 }
+
+pub fn encode_varint<B: BufMut>(val: u64, mut buf: &mut B) {
+    prost::encoding::encode_varint(val << 1, &mut buf);
+}
+
+pub fn decode_varint<B: Buf>(mut buf: &mut B) -> Result<u64, Error> {
+    let len = prost::encoding::decode_varint(&mut buf)?;
+    Ok(len >> 1)
+}
+

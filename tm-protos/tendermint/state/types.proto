@@ -4,11 +4,11 @@ package tendermint.state;
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/state";
 
 import "gogoproto/gogo.proto";
-import "abci/types.proto";
-import "types/types.proto";
-import "types/validator.proto";
-import "types/params.proto";
-import "version/types.proto";
+import "tendermint/abci/types.proto";
+import "tendermint/types/types.proto";
+import "tendermint/types/validator.proto";
+import "tendermint/types/params.proto";
+import "tendermint/version/types.proto";
 import "google/protobuf/timestamp.proto";
 
 // ABCIResponses retains the responses
@@ -30,6 +30,11 @@ message ValidatorsInfo {
 message ConsensusParamsInfo {
   tendermint.types.ConsensusParams consensus_params    = 1 [(gogoproto.nullable) = false];
   int64                            last_height_changed = 2;
+}
+
+message ABCIResponsesInfo {
+  ABCIResponses abci_responses = 1;
+  int64         height         = 2;
 }
 
 message Version {

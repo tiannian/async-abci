@@ -24,11 +24,6 @@ impl Default for ConsensusState {
     }
 }
 
-pub enum State {
-    Consensus(ConsensusQueue),
-    Other,
-}
-
 #[derive(Default)]
 pub struct ConsensusQueue {
     pub block: RequestBeginBlock,
@@ -98,7 +93,7 @@ impl ConsensusQueue {
             }
             // Begin -> BlockBegin
             (ConsensusState::Begin, request::Value::BeginBlock(p)) => {
-                self.block = p.clone();
+                self.block = p;
                 self.state = ConsensusState::BlockBegin;
             }
             // BlockBegin -> BlockBeginFlush

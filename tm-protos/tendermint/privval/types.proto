@@ -1,8 +1,8 @@
 syntax = "proto3";
 package tendermint.privval;
 
-import "crypto/keys.proto";
-import "types/types.proto";
+import "tendermint/crypto/keys.proto";
+import "tendermint/types/types.proto";
 import "gogoproto/gogo.proto";
 
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/privval";
@@ -73,12 +73,4 @@ message Message {
     PingRequest            ping_request             = 7;
     PingResponse           ping_response            = 8;
   }
-}
-
-// AuthSigMessage is duplicated from p2p prior to the P2P refactor.
-// It is used for the SecretConnection until we migrate privval to gRPC.
-// https://github.com/tendermint/tendermint/issues/4698
-message AuthSigMessage {
-  tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
-  bytes                       sig     = 2;
 }
