@@ -112,7 +112,6 @@ where
     let mut ocodec = OCodec::new(writer);
     loop {
         let pkt = icodec.next().await;
-        log::info!("Recv: {:?}", pkt);
 
         match pkt {
             Some(Ok(p)) => {
