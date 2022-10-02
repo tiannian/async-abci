@@ -4,8 +4,7 @@ An ABCI like [tendermint-abci](https://crates.io/crates/tendermint-abci), but as
 
 ## Version
 
-- tendermint: 0.35.x
-- spec: 0.7.1
+- tendermint: 0.34.21
 
 ## Packages
 
@@ -18,7 +17,7 @@ An ABCI like [tendermint-abci](https://crates.io/crates/tendermint-abci), but as
 ## Features
 
 - async-abci: async version of ABCI, fully cooperate with `Flush` in ABCI message.
-- Async runtime support: tokio.
+- Async runtime support: tokio, smol.
 
 ## Design
 
