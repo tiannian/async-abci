@@ -24,5 +24,5 @@ An ABCI like [tendermint-abci](https://crates.io/crates/tendermint-abci), but as
 
 ### Consensus
 
-![](assets/consensus.png)
+![state machine](assets/consensus.png)
 

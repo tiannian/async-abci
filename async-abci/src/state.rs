@@ -30,6 +30,7 @@ pub struct ConsensusQueue {
     pub txs: Vec<RequestDeliverTx>,
     pub state: ConsensusState,
     pub packet: Option<Request>,
+    pub flushed: bool,
 }
 
 impl ConsensusQueue {
@@ -42,6 +43,7 @@ impl ConsensusQueue {
                     txs: Vec::new(),
                     state: ConsensusState::Begin,
                     packet: None,
+                    flushed: false,
                 };
                 Ok(cq)
             }
@@ -85,11 +87,18 @@ impl ConsensusQueue {
             // ConsensusBegin -> ConsensusBeginFlush
             (ConsensusState::ConsensusBegin, request::Value::Flush(_)) => {
                 self.state = ConsensusState::ConsensusBeginFlush;
+                self.flushed = false;
+            }
+            // ConsensusBeginFlush -> ConsensusBeginFlush
+            (ConsensusState::ConsensusBeginFlush, request::Value::Flush(_)) => {
+                self.state = ConsensusState::ConsensusBeginFlush;
+                self.flushed = true;
             }
             // ConsensusBeginFlush -> BlockBegin
             (ConsensusState::ConsensusBeginFlush, request::Value::BeginBlock(p)) => {
                 self.block = p;
                 self.state = ConsensusState::BlockBegin;
+                self.flushed = false;
             }
             // Begin -> BlockBegin
             (ConsensusState::Begin, request::Value::BeginBlock(p)) => {
@@ -99,11 +108,18 @@ impl ConsensusQueue {
             // BlockBegin -> BlockBeginFlush
             (ConsensusState::BlockBegin, request::Value::Flush(_)) => {
                 self.state = ConsensusState::BlockBeginFlush;
+                self.flushed = false;
             }
-            // BlockBegin -> TxReceived
+            // BlockBeginFlush -> BlockBeginFlush
+            (ConsensusState::BlockBeginFlush, request::Value::Flush(_)) => {
+                self.state = ConsensusState::BlockBeginFlush;
+                self.flushed = true;
+            }
+            // BlockBeginFlush -> TxReceived
             (ConsensusState::BlockBeginFlush, request::Value::DeliverTx(p)) => {
                 self.txs.push(p);
                 self.state = ConsensusState::TxReceived;
+                self.flushed = false;
             }
             // TxReceived -> TxReceived
             (ConsensusState::TxReceived, request::Value::DeliverTx(p)) => {
@@ -116,23 +132,38 @@ impl ConsensusQueue {
             // BlockBeginFlush -> BlockEnd
             (ConsensusState::BlockBeginFlush, request::Value::EndBlock(_)) => {
                 self.state = ConsensusState::BlockEnd;
+                self.flushed = false;
             }
             // BlockEnd -> DeliverBlock
             (ConsensusState::BlockEnd, request::Value::Flush(_)) => {
                 self.state = ConsensusState::DeliverBlock;
+                self.flushed = false;
+            }
+            // DeliverBlock -> DeliverBlock
+            (ConsensusState::DeliverBlock, request::Value::Flush(_)) => {
+                self.state = ConsensusState::DeliverBlock;
+                self.flushed = true;
             }
             // DeliverBlock -> BlockCommit
             (ConsensusState::DeliverBlock, request::Value::Commit(_)) => {
                 self.state = ConsensusState::BlockCommit;
+                self.flushed = false;
             }
             // BlockCommit -> BlockCommitFlush
             (ConsensusState::BlockCommit, request::Value::Flush(_)) => {
                 self.state = ConsensusState::BlockCommitFlush;
+                self.flushed = false;
+            }
+            // BlockCommitFlush -> BlockCommitFlush
+            (ConsensusState::BlockCommitFlush, request::Value::Flush(_)) => {
+                self.state = ConsensusState::BlockCommitFlush;
+                self.flushed = true;
             }
             // BlockCommitFlush -> BlockBegin
             (ConsensusState::BlockCommitFlush, request::Value::BeginBlock(p)) => {
                 self.block = p;
                 self.state = ConsensusState::BlockBegin;
+                self.flushed = false;
             }
             _ => return Err(Error::ABCIPacketError),
         }

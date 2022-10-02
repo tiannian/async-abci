@@ -125,6 +125,12 @@ where
                     // do logic of based on state.
                     log::info!("State is: {:?}", st.state);
                     st.add_pkt(p).expect("Error state convert");
+
+                    if st.flushed {
+                        send_flush(&mut ocodec).await;
+                        continue;
+                    }
+
                     if st.is_deliver_block() {
                         // do appxx
                         let fbp = st.to_block().expect("Failed to build block");
