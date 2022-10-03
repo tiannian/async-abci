@@ -34,5 +34,5 @@ tokio-backend = ["tokio"]
 smol-backend = ["smol"]
 
 [[example]]
-name = "tokio_mock"
+name = "tokio_appx"
 required-features = ["tokio-backend", "tcp"]
