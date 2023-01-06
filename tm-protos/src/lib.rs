@@ -5,20 +5,20 @@
 
 /// ABCI Message types.
 pub mod abci {
-    include!(concat!(env!("OUT_DIR"), "/tendermint.abci.rs"));
+    include!("protos/tendermint.abci.rs");
 }
 
 /// Types for ABCI.
 pub mod types {
-    include!(concat!(env!("OUT_DIR"), "/tendermint.types.rs"));
+    include!("protos/tendermint.types.rs");
 }
 
 /// Version type.
 pub mod version {
-    include!(concat!(env!("OUT_DIR"), "/tendermint.version.rs"));
+    include!("protos/tendermint.version.rs");
 }
 
 /// Crypto type.
 pub mod crypto {
-    include!(concat!(env!("OUT_DIR"), "/tendermint.crypto.rs"));
+    include!("protos/tendermint.crypto.rs"));
 }
