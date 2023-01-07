@@ -1,6 +1,6 @@
 [package]
 name = "async-abci"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 description = "A async abci server."
 readme = "../README.md"
