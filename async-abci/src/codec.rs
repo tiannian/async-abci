@@ -160,4 +160,3 @@ pub fn decode_varint<B: Buf>(mut buf: &mut B) -> Result<u64, Error> {
     let len = prost::encoding::decode_varint(&mut buf)?;
     Ok(len >> 1)
 }
-
