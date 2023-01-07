@@ -1,15 +1,5 @@
-#[cfg(feature = "smol-backend")]
-use smol::io::{AsyncRead, AsyncWrite};
-#[cfg(all(feature = "smol-backend", feature = "unix"))]
-use smol::net::unix::UnixListener;
-#[cfg(all(feature = "smol-backend", feature = "tcp"))]
-use smol::net::{AsyncToSocketAddrs, TcpListener};
-
-#[cfg(feature = "tokio-backend")]
 use tokio::io::{AsyncRead, AsyncWrite};
-#[cfg(all(feature = "tokio-backend", feature = "unix"))]
 use tokio::net::UnixListener;
-#[cfg(all(feature = "tokio-backend", feature = "tcp"))]
 use tokio::net::{TcpListener, ToSocketAddrs as AsyncToSocketAddrs};
 
 use tm_abci::{request, response, ApplicationXX, Request, Response};
@@ -22,10 +12,9 @@ use crate::{
 
 /// ACBI Server.
 pub struct ServerXX<App> {
-    #[cfg(feature = "tcp")]
-    listener: Option<TcpListener>,
-    #[cfg(feature = "unix")]
-    listener: Option<UnixListener>,
+    tcp: Option<TcpListener>,
+    #[cfg(unix)]
+    unix: Option<UnixListener>,
     app: App,
 }
 
@@ -35,50 +24,53 @@ where
 {
     pub fn new(app: App) -> Self {
         Self {
-            #[cfg(feature = "tcp")]
-            listener: None,
+            tcp: None,
 
-            #[cfg(feature = "unix")]
-            listener: None,
+            #[cfg(unix)]
+            unix: None,
 
             app,
         }
     }
 
-    #[cfg(feature = "tcp")]
     pub async fn bind<A: AsyncToSocketAddrs>(mut self, addr: A) -> Result<Self> {
-        let listener = TcpListener::bind(addr).await?;
-        self.listener = Some(listener);
+        let tcp = TcpListener::bind(addr).await?;
+        self.tcp = Some(tcp);
 
         Ok(self)
     }
 
-    #[cfg(feature = "unix")]
+    #[cfg(unix)]
     pub async fn bind_unix<P: AsRef<std::path::Path>>(mut self, path: P) -> Result<Self> {
         let listener = UnixListener::bind(path)?;
-        self.listener = Some(listener);
+        self.unix = Some(listener);
 
         Ok(self)
     }
 
     pub async fn run(self) -> Result<()> {
-        if self.listener.is_none() {
-            return Err(Error::ServerNotBinding);
-        }
-        let listener = self.listener.unwrap();
-        loop {
-            let (socket, addr) = listener.accept().await?;
-            log::info!("new connect from {:?}", addr);
+        if let Some(listener) = self.tcp {
+            loop {
+                let (socket, addr) = listener.accept().await?;
+                log::info!("new connect from {:?}", addr);
 
-            #[cfg(feature = "smol-backend")]
-            smol::spawn(conn_handle(socket.clone(), socket, self.app.clone())).detach();
-
-            #[cfg(feature = "tokio-backend")]
-            {
                 let (reader, writer) = socket.into_split();
                 tokio::spawn(conn_handle(reader, writer, self.app.clone()));
             }
         }
+
+        #[cfg(unix)]
+        if let Some(listener) = self.unix {
+            loop {
+                let (socket, addr) = listener.accept().await?;
+                log::info!("new connect from {:?}", addr);
+
+                let (reader, writer) = socket.into_split();
+                tokio::spawn(conn_handle(reader, writer, self.app.clone()));
+            }
+        }
+
+        Err(Error::ServerNotBinding)
     }
 }
 

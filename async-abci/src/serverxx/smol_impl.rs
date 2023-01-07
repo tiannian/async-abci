@@ -50,15 +50,6 @@ where
     }
 
     pub async fn run(self) -> Result<()> {
-        let _unix_exist = false;
-
-        #[cfg(unix)]
-        let _unix_exist = self.unix.is_none();
-
-        if self.tcp.is_none() && _unix_exist {
-            return Err(Error::ServerNotBinding);
-        }
-
         if let Some(tcp) = self.tcp {
             let (socket, addr) = tcp.accept().await?;
             log::info!("new connect from {:?}", addr);
@@ -74,7 +65,7 @@ where
             smol::spawn(conn_handle(socket.clone(), socket, self.app.clone())).detach();
         }
 
-        Ok(())
+        return Err(Error::ServerNotBinding);
     }
 }
 
