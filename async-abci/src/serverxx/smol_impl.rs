@@ -51,21 +51,27 @@ where
 
     pub async fn run(self) -> Result<()> {
         if let Some(tcp) = self.tcp {
+            loop {
+
             let (socket, addr) = tcp.accept().await?;
             log::info!("new connect from {:?}", addr);
 
             smol::spawn(conn_handle(socket.clone(), socket, self.app.clone())).detach();
+            }
         }
 
         #[cfg(unix)]
         if let Some(unix) = self.unix {
+            loop {
             let (socket, addr) = unix.accept().await?;
             log::info!("new connect from {:?}", addr);
 
             smol::spawn(conn_handle(socket.clone(), socket, self.app.clone())).detach();
+
+            }
         }
 
-        return Err(Error::ServerNotBinding);
+        Err(Error::ServerNotBinding)
     }
 }
 
